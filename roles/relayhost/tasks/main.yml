@@ -1,0 +1,49 @@
+---
+- name: Validate parameters
+  ansible.builtin.assert:
+    that:
+      - puppeteers_postfix_relayhost_relayhost is string
+      - puppeteers_postfix_relayhost_relayhost_port is number
+      - puppeteers_postfix_relayhost_smtp_username is string
+      - puppeteers_postfix_relayhost_smtp_password is string
+      - puppeteers_postfix_relayhost_mynetworks is string
+
+- name: Install packages
+  ansible.builtin.package:
+    name:
+      - postfix
+      - cyrus-sasl-plain
+    state: present
+
+- name: Enable postfix service
+  ansible.builtin.service:
+    name: postfix
+    enabled: true
+    state: started
+
+- name: Add postfix main.cf
+  ansible.builtin.template:
+    src: templates/main.cf.j2
+    dest: /etc/postfix/main.cf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart postfix
+
+- name: Add sasl_passwd
+  ansible.builtin.template:
+    src: templates/sasl_passwd.j2
+    dest: /etc/postfix/sasl_passwd
+    owner: root
+    group: root
+    mode: '0600'
+  notify:
+    - Rebuild sasl_passwd.db
+    - Restart postfix
+
+- name: Open port in firewalld
+  ansible.posix.firewalld:
+    rich_rule: rule family="ipv4" source address="{{ puppeteers_postfix_relayhost_mynetworks }}" service name="smtp" accept
+    state: enabled
+    permanent: true
+    immediate: true

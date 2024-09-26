@@ -1,0 +1,9 @@
+---
+- name: Rebuild sasl_passwd.db
+  ansible.builtin.command:
+    cmd: "/usr/sbin/postmap hash:/etc/postfix/sasl_passwd"
+
+- name: Restart postfix
+  ansible.builtin.service:
+    name: postfix
+    state: restarted
